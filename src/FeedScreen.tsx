@@ -11,8 +11,15 @@ export default memo(() => {
 
   const [posts, setPosts] = useState<IPost[]>([])
   const [nextFrom, setNextFrom] = useState<string>('')
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const loadFeed = useCallback(() => {
+    if (loadingMore) {
+      return
+    }
+    if (nextFrom.length > 0) {
+      setLoadingMore(true)
+    }
     fetch(
       `https://api.vk.com/method/newsfeed.get?v=5.92&filters=post&count=25&access_token=${user?.access_token}&start_from=${nextFrom}`
     )
@@ -33,10 +40,13 @@ export default memo(() => {
             text,
             owner: owners.find((owner) => owner.id === source_id),
           }))
-        setPosts([...posts, ...newPosts])
-        setNextFrom(response.next_from)
+        setTimeout(() => {
+          setPosts([...posts, ...newPosts])
+          setNextFrom(response.next_from)
+          setLoadingMore(false)
+        }, 3000)
       })
-  }, [user, posts, nextFrom])
+  }, [user, posts, nextFrom, loadingMore])
 
   useEffect(() => {
     loadFeed()
@@ -57,6 +67,13 @@ export default memo(() => {
           data={posts}
           keyExtractor={(post) => String(post.id)}
           renderItem={({ item }) => <Post post={item} />}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size='large' color='#000' />
+              </View>
+            ) : null
+          }
           onEndReached={loadFeed}
         />
       )}
@@ -82,5 +99,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  loadingMoreContainer: {
+    paddingBottom: 16,
   },
 })
